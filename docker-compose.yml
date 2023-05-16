@@ -1,0 +1,28 @@
+version: "3.1"
+
+services:
+ db:
+  image: mysql:5.6
+  restart: always
+  environment:
+   MYSQL_ROOT_PASSWORD: test
+   MYSQL_DATABASE: test
+  ports:
+   - '6677:3306'
+  expose:
+    - '3306'
+  networks:
+    - main
+ web:
+  build: .
+  restart: always
+  ports:
+   - '88:88'
+  environment:
+   OPENAI_KEY: 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
+   TG_KEY: 6070862807:AAGO89VrTKwa2xLWcWqZ1zqMH_eaee1Vycw
+  networks:
+   - main
+   
+networks:
+ main:

@@ -6,5 +6,4 @@ tmp/
 temp/
 .env
 test.rest
-dockerfile
-docker-compose.yml
+

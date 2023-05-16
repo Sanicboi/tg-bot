@@ -5,7 +5,8 @@ import TGBot from "node-telegram-bot-api"
 import axios, { AxiosResponse } from "axios";
 import {Configuration, OpenAIApi} from "openai"
 import { Admin } from "./entity/Admin";
-const bot = new TGBot(process.env.TG_KEY || '', {polling: true});
+
+const bot = new TGBot('6070862807:AAGO89VrTKwa2xLWcWqZ1zqMH_eaee1Vycw', {polling: true});
 let signingUp: number[] = [];
 export interface Ifeedback {id: string, text: string, productValuation: number, productDetails:{productName: string, nmId: number, supplierName: string}};
 export interface WBRes {data: {feedbacks: Ifeedback[]}}
@@ -16,7 +17,7 @@ export interface Iskipped {
 import { Bot } from "./funcs/bot";
 
 let skipped: Iskipped[] = [];
-const conf = new Configuration({apiKey: process.env.OPENAI_KEY || ''});
+const conf = new Configuration({apiKey: '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'});
 const openai = new OpenAIApi(conf);
 
 AppDataSource.initialize().then(async () => {
@@ -57,14 +58,14 @@ AppDataSource.initialize().then(async () => {
     bot.onText(/\/admin (.+)/, async (msg: TGBot.Message, match: RegExpExecArray) => {
         if (match[1] !== 'пташкаадминистратор') return await bot.sendMessage(msg.chat.id, 'Неверный промокод админа');
         let admin = new Admin();
-        admin.chatId = msg.from?.id;
+	admin.chatId = String(msg.from?.id)
         const result = await adminRepo.save(admin);
         if (!result) return await bot.sendMessage(msg.chat.id, 'Произошла ошибка');
         await bot.sendMessage(msg.chat.id, 'Пользователь добавлен как администратор, просмотреть пользователей: /users');
     });
 
     bot.onText(/\/token (.+)/, async (msg: TGBot.Message, match: RegExpExecArray) => {
-        const user = await userRepo.findOneBy({chatId: msg.chat.id});
+        const user = await userRepo.findOneBy({chatId: String(msg.chat.id)});
         if (!user) return await bot.sendMessage(msg.from.id, 'Вы не авторизованы');
         user.token = match[1];
         await userRepo.save(user);
@@ -85,7 +86,7 @@ AppDataSource.initialize().then(async () => {
     bot.onText(/(.+)/, async (msg: TGBot.Message, match: RegExpExecArray) => {
         const user = await userRepo.findOne({
             where: {
-                chatId: msg.chat.id,
+                chatId: String(msg.chat.id),
             },
             relations: {
                 answers: true
@@ -98,7 +99,7 @@ AppDataSource.initialize().then(async () => {
             user.enteredPhoneNumber = false;
             user.enteredPromo = false;
             user.enteredToken = false;
-            user.chatId = msg.chat.id;
+	    user.chatId = String(msg.chat.id);
             await userRepo.save(user);
             await bot.sendMessage(msg.chat.id, 'Введите ваш номер телефона');
             signingUp = signingUp.filter(el => el !== msg.chat.id);
@@ -151,11 +152,13 @@ AppDataSource.initialize().then(async () => {
     });
 
     bot.on('callback_query',async  (q: TGBot.CallbackQuery) => {
-        const user = await userRepo.findOne({
+        console.log(q.from.id);
+	const user = await userRepo.findOne({
             where: {
-                chatId: q.from.id
+                chatId: String(q.from.id)
             }
         });
+	console.log(user);
         if (q.data === 'answer') {
             skipped = skipped.filter(el => {
                 return el.userId !== user.id;
@@ -175,14 +178,14 @@ AppDataSource.initialize().then(async () => {
             await Bot.remove(q, +match[1], user, bot, answerRepo, skipped);
         } else if (/delete-(.+)/.test(q.data)) {
             const match = /delete-(.+)/.exec(q.data);
-            const admin = await adminRepo.findOneBy({chatId: q.from.id});
+            const admin = await adminRepo.findOneBy({chatId: String(q.from.id)});
             if (!admin) return await bot.sendMessage(q.from.id, 'Вы не админ');
             const user = await userRepo.findOneBy({id: +match[1]});
             if (!user) return
             await AppDataSource.query('SET FOREIGN_KEY_CHECKS = 0');
             await userRepo.query(`DELETE FROM user WHERE id = ${user.id}`);
             await AppDataSource.query('SET FOREIGN_KEY_CHECKS = 1');
-            await bot.sendMessage(admin.chatId, 'Пользователь удален');
+            await bot.sendMessage(Number(admin.chatId), 'Пользователь удален');
         } else if (/edit-(.+)/.test(q.data)) {
             const match = /edit-(.+)/.exec(q.data);
             const answer = await answerRepo.findOneBy({id: +match[1]});

@@ -4,10 +4,10 @@ import { User } from "./entity/User"
 import { Answer } from "./entity/Answer"
 import { Admin } from "./entity/Admin"
 export const AppDataSource = new DataSource({
-    type: "mysql",
-    host: "localhost",
-    port: 3306,
-    username: "root",
+    type: "postgres",
+    host: "db",
+    port: 5432,
+    username: "test",
     password: "test",
     database: "test",
     synchronize: true,

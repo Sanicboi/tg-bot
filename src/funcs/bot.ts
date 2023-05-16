@@ -229,7 +229,7 @@ export class Bot {
                 }
             });
             admins.forEach(async admin => {
-                await bot.sendMessage(admin.chatId, `#ответсогласованотправлен @${user.name}`);
+                await bot.sendMessage(Number(admin.chatId), `#ответсогласованотправлен @${user.name}`);
             });
         } catch (error) {
             console.log(error);
@@ -306,7 +306,7 @@ export class Bot {
                 }
             });
             admins.forEach(async admin => {
-                await bot.sendMessage(admin.chatId, `#ответизменен @${user.name}`);
+                await bot.sendMessage(Number(admin.chatId), `#ответизменен @${user.name}`);
             });
         } catch (error) {
             console.log(error);

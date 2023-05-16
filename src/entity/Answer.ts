@@ -9,24 +9,30 @@ export class Answer {
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column({
-        charset: 'koi8r'
-    })
+    @Column()
     text: string
 
     @Column()
     fbId: string
 
-    @Column()
+    @Column({
+        nullable: true
+   })
     count: number
 
-    @Column()
+    @Column({
+        nullable: true
+   })
     waitingForResponse: boolean
 
-    @Column()
+    @Column({
+        nullable: true
+   })
     valuation: number
 
-    @Column()
+    @Column({
+        nullable: true
+   })
     waitingForConfirmation: boolean
 
     @ManyToOne(() => User, (user) => user.answers)
@@ -47,6 +53,7 @@ export class AnswerWrapper {
                     order: "dateDesc"
                 }
             });
+	    console.log("Wildberries complete");
             const filtered = previous.data.data.feedbacks.filter(e => e.productDetails.nmId === nmId).filter((e, idx) => idx < 9).map(e => {
                 const {supplierName, ...rest} = e.productDetails;
                 const {...rest2} = e;
@@ -79,6 +86,7 @@ export class AnswerWrapper {
             return result;
         } catch (error) {
             console.log(error.response?.data);
+            console.log(error);
             return false;
         }
     }
@@ -90,12 +98,6 @@ export class AnswerWrapper {
             answer.text = text;
             answer.waitingForResponse = false;
             await repo.save(answer);
-            // if (process.env.NODE_ENV === 'PROD') {
-            //     await axios.patch('https://feedbacks-api.wb.ru/api/v1/feedbacks', {
-            //         id: answer.fbId,
-            //         text: text
-            //     });
-            // }
             return answer;
 
         } catch (error) {
@@ -120,12 +122,10 @@ export class AnswerWrapper {
             const answer = await repo.findOneBy({
                 id
             });
-            if (process.env.NODE_ENV === 'PROD') {
-                await axios.patch('https://feedbacks-api.wb.ru/api/v1/feedbacks', {
+            await axios.patch('https://feedbacks-api.wb.ru/api/v1/feedbacks', {
                     id: answer.fbId,
                     text: answer.text
-                });
-            }
+            });
             return answer;
         } catch (error) {
             console.log(error);
@@ -133,3 +133,4 @@ export class AnswerWrapper {
         }
     }
 }
+

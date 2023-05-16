@@ -7,27 +7,37 @@ export class User {
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column()
-    chatId: number
-
     @Column({
-        charset: "koi8r",
-    })
+	type: 'bigint'
+	})
+    chatId: string
+
+    @Column()
     name: string
 
-    @Column()
+    @Column({
+	nullable: true
+   })
     phone: string
 
-    @Column()
+    @Column({
+        nullable: true
+   })
     token: string
 
-    @Column()
+    @Column({
+        nullable: true
+   })
     enteredPhoneNumber: boolean
 
-    @Column()
+    @Column({
+        nullable: true
+   })
     enteredToken: boolean
 
-    @Column()
+    @Column({
+        nullable: true
+   })
     enteredPromo: boolean
 
     @OneToMany(() => Answer, (answer) => answer.user)

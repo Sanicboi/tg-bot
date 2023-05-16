@@ -5,8 +5,8 @@ export class Admin {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
-    chatId: number;
+    @Column({type: 'bigint'})
+    chatId: string;
 
     // @Column()
     // userId: number;

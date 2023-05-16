@@ -7,4 +7,7 @@ export class Admin {
 
     @Column()
     chatId: number;
+
+    // @Column()
+    // userId: number;
 }

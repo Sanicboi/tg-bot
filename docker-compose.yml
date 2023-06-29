@@ -1,0 +1,33 @@
+version: "3.1"
+
+services:
+ db:
+  image: postgres
+  restart: always
+  environment:
+   POSTGRES_PASSWORD: test
+   POSTGRES_USER: test
+   POSTGRES_DB: test
+   POSTGRES_INITDB_ARGS: "-E UTF8"
+  ports:
+   - 5432:5432
+  expose:
+    - 5432
+  networks:
+    - main
+  volumes:
+   - "~/db-data:/var/lib/postgresql/data"
+ web:
+  build: .
+  restart: always
+  ports:
+   - 88:88
+  environment:
+   OPENAI_KEY: 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
+   TG_KEY: 6070862807:AAGO89VrTKwa2xLWcWqZ1zqMH_eaee1Vycw
+  networks:
+   - main
+   
+networks:
+ main:
+

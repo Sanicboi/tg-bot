@@ -102,7 +102,7 @@ AppDataSource.initialize().then(async () => {
                 }]);
             } else {
                 keyboard.push([{
-                    text: 'Ввести токен статистики',
+                    text: 'Ввести токен статистики (для отчетов):',
                     callback_data: 'enter-stats'
                 }]);
             }
@@ -113,7 +113,7 @@ AppDataSource.initialize().then(async () => {
                 }]);
             } else {
                 keyboard.push([{
-                    text: 'Ввести токен отзывов',
+                    text: 'Ввести стандартный токен (для отзывов):',
                     callback_data: 'enter-token'
                 }]);
             }
@@ -133,13 +133,13 @@ bot.onText(/\/me/, async (msg: TGBot.Message) => {
     let keyboard: TGBot.InlineKeyboardButton[][] = [];
     if (!user.enteredStats) keyboard.push([
         {
-            text: 'Ввести токен статистики для отчетов',
+            text: 'Ввести токен статистики (для отчетов):',
             callback_data: 'enter-stats'
         }
     ])
     if (!user.enteredToken) keyboard.push([
         {
-            text: 'Ввести стандартный токен для отзывов',
+            text: 'Ввести стандартный токен (для отзывов):',
             callback_data: 'enter-token'
         }
     ]);
@@ -155,7 +155,7 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
             answers: true
         }});
         const admins = await adminRepo.find();
-        
+
         if (msg.text.startsWith('/') && user) {
             if (user.enteringToken) user.enteringToken = false;
             if (user.enteringStats) user.enteringStats = false;
@@ -203,13 +203,13 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                     inline_keyboard: [
                         [
                             {
-                                text: 'Ввести стандартный токен для отзывов',
+                                text: 'Ввести токен статистики (для отчетов):',
                                 callback_data: 'enter-token'
                             }
                         ],
                         [
                             {
-                                text: 'Ввести токен статистики для отзывов',
+                                text: 'Ввести стандартный токен (для отзывов):',
                                 callback_data: 'enter-stats'
                             }
                         ]
@@ -247,7 +247,7 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                 })
             } catch (error) {
                 console.log(error);
-                await bot.sendMessage(msg.chat.id, `Мы работаем над этим функционалом. Скоро все заработает)`);
+                await bot.sendMessage(msg.chat.id, `Данный токен не функционирует. Пожалуйста введите корректный токен.`);
                 user.enteringStats = false;
                 await userRepo.save(user);
             }
@@ -276,7 +276,7 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                 })
             } catch (error) {
                 console.log(error);
-                await bot.sendMessage(msg.chat.id, 'Токен отзывов не функционирует');
+                await bot.sendMessage(msg.chat.id, 'Данный токен не функционирует. Пожалуйста введите корректный токен.');
             }
         } else if (user && user?.answers?.find(el => el.waitingForResponse == true)) {
             await Bot.edit(msg, admins, bot, user, msg.text || '', answerRepo);
@@ -298,13 +298,13 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                     inline_keyboard: [
                         [
                             {
-                                text: 'Ввести стандартный токен для отзывов',
+                                text: 'Ввести стандартный токен (для отзывов):',
                                 callback_data: 'enter-token'
                             }
                         ],
                         [
                             {
-                                text: 'Ввести токен статистики для отзывов',
+                                text: 'Ввести токен статистики (для отчетов):',
                                 callback_data: 'enter-stats'
                             }
                         ]
@@ -324,7 +324,7 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                 }]);
             } else {
                 keyboard.push([{
-                    text: 'Ввести токен статистики',
+                    text: 'Ввести токен статистики (для отчетов):',
                     callback_data: 'enter-stats'
                 }]);
             }
@@ -335,7 +335,7 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                 }]);
             } else {
                 keyboard.push([{
-                    text: 'Ввести токен отзывов',
+                    text: 'Ввести стандартный токен (для отзывов):',
                     callback_data: 'enter-token'
                 }]);
             }

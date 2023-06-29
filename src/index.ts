@@ -124,18 +124,6 @@ AppDataSource.initialize().then(async () => {
             });
         }
     });
-	
-
-bot.onText(/\//, async (msg: TGBot.Message) => {
-    const user = await userRepo.findOneBy({chatId: String(msg.chat.id)});
-    if (user && (user.enteringToken || user.enteringStats)) {
-        if (user.enteredToken) user.enteringToken = false;
-        if (user.enteringStats) user.enteringStats = false;
-        await userRepo.save(user);
-    }
-});
-
-
 // TODO: copy code (DRY)
 bot.onText(/\/me/, async (msg: TGBot.Message) => {
         const user = await userRepo.findOne({where: {chatId: String(msg.chat.id)}, relations: {
@@ -167,6 +155,12 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
             answers: true
         }});
         const admins = await adminRepo.find();
+        
+        if (msg.text.startsWith('/') && user) {
+            if (user.enteringToken) user.enteringToken = false;
+            if (user.enteringStats) user.enteringStats = false;
+            await userRepo.save(user);
+        }
 
         if (signingUp.find(el => el === msg.chat.id) && !user) {
             const newUser = new User();

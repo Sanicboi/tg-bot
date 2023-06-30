@@ -102,7 +102,7 @@ AppDataSource.initialize().then(async () => {
                 }]);
             } else {
                 keyboard.push([{
-                    text: 'Ввести токен статистики',
+                    text: 'Ввести токен статистики (для отчетов):',
                     callback_data: 'enter-stats'
                 }]);
             }
@@ -113,14 +113,15 @@ AppDataSource.initialize().then(async () => {
                 }]);
             } else {
                 keyboard.push([{
-                    text: 'Ввести токен отзывов',
+                    text: 'Ввести стандартный токен (для отзывов):',
                     callback_data: 'enter-token'
                 }]);
             }
             await bot.sendMessage(msg.chat.id,  `Добро пожаловать в бот MPfact, ${user.name}\nВаш ID: ${user.chatId}\nДата регистрации: ${user.signupDate.toLocaleDateString()}\nТокен стандартный для отзывов:\n${user.enteredToken ? '✅Введен' : '❌Отсутствует'}\nТокен статистики для отчетов:\n${user.enteredStats ? '✅Введен' : '❌Отсутствует'}\n${user.supplierName ? `Имя поставщика: ${user.supplierName}` : ``}\n\nИнструкция по поиску и добавлению токенов здесь: https://telegra.ph/Instrukciya-po-dobavleniyu-tokenov-v-bot-MPfact-06-27`, {
                 reply_markup: {
                     inline_keyboard: keyboard
-                }
+                },
+                disable_web_page_preview: true
             });
         }
     });
@@ -133,20 +134,21 @@ bot.onText(/\/me/, async (msg: TGBot.Message) => {
     let keyboard: TGBot.InlineKeyboardButton[][] = [];
     if (!user.enteredStats) keyboard.push([
         {
-            text: 'Ввести токен статистики для отчетов',
+            text: 'Ввести токен статистики (для отчетов):',
             callback_data: 'enter-stats'
         }
     ])
     if (!user.enteredToken) keyboard.push([
         {
-            text: 'Ввести стандартный токен для отзывов',
+            text: 'Ввести стандартный токен (для отзывов):',
             callback_data: 'enter-token'
         }
     ]);
 	await bot.sendMessage(msg.chat.id,  `Добро пожаловать в бот MPfact, ${user.name}\nВаш ID: ${user.chatId}\nДата регистрации: ${user.signupDate.toLocaleDateString()}\nТокен стандартный для отзывов:\n${user.enteredToken ? '✅Введен' : '❌Отсутствует'}\nТокен статистики для отчетов:\n${user.enteredStats ? '✅Введен' : '❌Отсутствует'}\n${user.supplierName ? `Имя поставщика: ${user.supplierName}` : ``}\n\nИнструкция по поиску и добавлению токенов здесь: https://telegra.ph/Instrukciya-po-dobavleniyu-tokenov-v-bot-MPfact-06-27`,{
         reply_markup: {
             inline_keyboard: keyboard
-        }
+        },
+        disable_web_page_preview: true
     });
 });
 
@@ -155,7 +157,7 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
             answers: true
         }});
         const admins = await adminRepo.find();
-        
+
         if (msg.text.startsWith('/') && user) {
             if (user.enteringToken) user.enteringToken = false;
             if (user.enteringStats) user.enteringStats = false;
@@ -203,18 +205,19 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                     inline_keyboard: [
                         [
                             {
-                                text: 'Ввести стандартный токен для отзывов',
+                                text: 'Ввести токен статистики (для отчетов):',
                                 callback_data: 'enter-token'
                             }
                         ],
                         [
                             {
-                                text: 'Ввести токен статистики для отзывов',
+                                text: 'Ввести стандартный токен (для отзывов):',
                                 callback_data: 'enter-stats'
                             }
                         ]
                     ]
-                }
+                },
+                disable_web_page_preview: true
             });
             admins.forEach(async admin => {
                 await bot.sendMessage(+admin.chatId, `Новый пользователь ${user.name}, ник в тг: @${msg.from?.username || msg.from?.first_name} Промокод: ${user.special ? 'special23' : 'ранняяпташка'}`)
@@ -247,7 +250,7 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                 })
             } catch (error) {
                 console.log(error);
-                await bot.sendMessage(msg.chat.id, `Мы работаем над этим функционалом. Скоро все заработает)`);
+                await bot.sendMessage(msg.chat.id, `Данный токен не функционирует. Пожалуйста введите корректный токен.`);
                 user.enteringStats = false;
                 await userRepo.save(user);
             }
@@ -276,7 +279,7 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                 })
             } catch (error) {
                 console.log(error);
-                await bot.sendMessage(msg.chat.id, 'Токен отзывов не функционирует');
+                await bot.sendMessage(msg.chat.id, 'Данный токен не функционирует. Пожалуйста введите корректный токен.');
             }
         } else if (user && user?.answers?.find(el => el.waitingForResponse == true)) {
             await Bot.edit(msg, admins, bot, user, msg.text || '', answerRepo);
@@ -298,18 +301,19 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                     inline_keyboard: [
                         [
                             {
-                                text: 'Ввести стандартный токен для отзывов',
+                                text: 'Ввести стандартный токен (для отзывов):',
                                 callback_data: 'enter-token'
                             }
                         ],
                         [
                             {
-                                text: 'Ввести токен статистики для отзывов',
+                                text: 'Ввести токен статистики (для отчетов):',
                                 callback_data: 'enter-stats'
                             }
                         ]
                     ]
-                }
+                },
+                disable_web_page_preview: true
             });
         } else if (user && q.data === 'enter-token') {
             user.enteringToken = true;
@@ -324,7 +328,7 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                 }]);
             } else {
                 keyboard.push([{
-                    text: 'Ввести токен статистики',
+                    text: 'Ввести токен статистики (для отчетов):',
                     callback_data: 'enter-stats'
                 }]);
             }
@@ -335,14 +339,15 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                 }]);
             } else {
                 keyboard.push([{
-                    text: 'Ввести токен отзывов',
+                    text: 'Ввести стандартный токен (для отзывов):',
                     callback_data: 'enter-token'
                 }]);
             }
             await bot.sendMessage(q.from.id, `Добро пожаловать в бот MPfact, ${user.name}\nВаш ID: ${user.chatId}\nДата регистрации: ${user.signupDate.toLocaleDateString()}\nТокен стандартный для отзывов:\n${user.enteredToken ? '✅Введен' : '❌Отсутствует'}\nТокен статистики для отчетов:\n${user.enteredStats ? '✅Введен' : '❌Отсутствует'}\n${user.supplierName ? `Имя поставщика: ${user.supplierName}` : ``}\n\nИнструкция по поиску и добавлению токенов здесь: https://telegra.ph/Instrukciya-po-dobavleniyu-tokenov-v-bot-MPfact-06-27`, {
                 reply_markup: {
                     inline_keyboard: keyboard
-                }
+                },
+                disable_web_page_preview: true
             });
         } else if (q.data === 'report') {
             await bot.sendChatAction(q.from.id, 'typing');

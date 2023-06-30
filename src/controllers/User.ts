@@ -2,7 +2,7 @@ import { User } from "../entity/User";
 import { DataSource, Repository } from "typeorm";
 
 export class UserController {
-    private repo: Repository<User>;
+    public readonly repo: Repository<User>;
     private dataSource: DataSource;
 
 

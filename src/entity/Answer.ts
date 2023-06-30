@@ -30,12 +30,22 @@ export class Answer {
    })
     valuation: number
 
-    @Column({
-        nullable: true
+//     @Column({
+//         nullable: true
+//    })
+//     waitingForConfirmation: boolean
+
+   @Column({
+    
    })
-    waitingForConfirmation: boolean
 
+   @Column()
+   createdAt: Date;
 
+   @Column({
+    default: false,
+   })
+   edited: boolean;
 
     @ManyToOne(() => User, (user) => user.answers)
     user: User

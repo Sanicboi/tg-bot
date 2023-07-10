@@ -5,6 +5,13 @@ import TGBot from "node-telegram-bot-api"
 import axios, { AxiosError, AxiosResponse } from "axios";
 import {Configuration, OpenAIApi} from "openai"
 import { Admin } from "./entity/Admin";
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+const cron = require('node-cron');
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 //TODO: change to env variable
 const bot = new TGBot('5990028065:AAGQx03OOnmW_9HYWEJRzPwvYQdtvBwR-QM' /*'6207034141:AAERSTefTVzUGjS8oJ92WFV2GRUGEm0AUCc'*/, {polling: true});
@@ -29,6 +36,7 @@ export interface ISale {
     priceWithDisc: number;
 }
 import { Bot } from "./funcs/bot";
+import {TEXT_REPORT} from "./data/texts";
 
 let skipped: Iskipped[] = [];
 let enteringToken: number[] = [];
@@ -49,18 +57,18 @@ AppDataSource.initialize().then(async () => {
             command: '/answer',
             description: '🫶 Ответы на отзывы'
         },
-	{
-		command: '/report',
-		description: '📊Сводный отчет'
-	},
-	{
-		command: '/me',
-		description: '👤 Пользователь'
-	},
-    {
-        command: '/improvements',
-        description: '💡 Если у вас есть предложения, комментарии или пожелания по улучшению нашего сервиса, пожалуйста, направьте их в наш Telegram-бот по адресу https://t.me/MPfact_SupportBot.'
-    },
+        {
+            command: '/report',
+            description: '📊 Сводный отчет'
+        },
+        {
+            command: '/me',
+            description: '👤 Пользователь'
+        },
+        {
+            command: '/improvements',
+            description: '💡 Если у вас есть предложения, комментарии или пожелания по улучшению нашего сервиса, пожалуйста, направьте их в наш Telegram-бот по адресу https://t.me/MPfact_SupportBot.'
+        },
     ]);
 
 
@@ -78,20 +86,18 @@ AppDataSource.initialize().then(async () => {
         const user = await userRepo.findOneBy({chatId: String(msg.chat.id)});
         if (!user) {
             await bot.sendMessage(msg.chat.id, `Добро пожаловать!
+                Бот MPfact на основе ИИ, поможет:
+                
+                1. Автоматизировать работу с отзывами на маркетплейсах.
+                2. Контролировать продажи на маркетплейсах
+                
+                
+                🔥 Генерируйте ответы на отзывы в два клика и экономьте время для других задач!
+                
+                Для начала работы надо зарегистрироваться и подключить API маркетплейса. 
+                            
+                Введи пожалуйста свое имя`);
 
-Бот MPfact на основе ИИ, поможет:
-
-1. Автоматизировать работу с отзывами на маркетплейсах.
-2. Контролировать продажи на маркетплейсах
-
-
-🔥 Генерируйте ответы на отзывы в два клика и экономьте время для других задач!
-
-Для начала работы надо зарегистрироваться и подключить API маркетплейса. 
-            
-Введи пожалуйста свое имя
-
-`);
             signingUp.push(msg.chat.id);
         } else {
             let keyboard: TGBot.InlineKeyboardButton[][] = [];
@@ -353,18 +359,55 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
             await bot.sendChatAction(q.from.id, 'typing');
             if (!user) return await bot.sendMessage(q.from.id, 'Вы не авторизованы');
             if (!user.enteredStats) return await bot.sendMessage(q.from.id, 'Вы не ввели токен статистики');
-            if ((new Date()).getDay() === 1 && (new Date()).getHours() > 3 && (new Date()).getHours() < 16) return await bot.sendMessage(q.from.id, 'У вайлдберриз перерыв в работе метода (каждый понедельник 3:00-16:00 МСК). Попробуйте позже.')
+
+            const now = dayjs(new Date()).tz('Europe/Moscow');
+
+            if (now.day() === 1 && now.hour() > 3 && now.hour() < 16) return await bot.sendMessage(q.from.id, 'У вайлдберриз перерыв в работе метода (каждый понедельник 3:00-16:00 МСК). Попробуйте позже.')
+
+            const today = now.format('YYYY-MM-DD');
+            const yesterday = now.subtract(1, 'day').format('YYYY-MM-DD');
+            const week = now.subtract(7, 'day').format('YYYY-MM-DD');
+            const month = now.subtract(30, 'day').format('YYYY-MM-DD');
+
+            const periodData: Record<string, { title: string, orders: IOrder[], cancels: IOrder[], sales: ISale[], refunds: ISale[] }> = {
+                today: {
+                    title: 'СЕГОДНЯ',
+                    orders: [],
+                    cancels: [],
+                    sales: [],
+                    refunds: []
+                },
+                yesterday: {
+                    title: 'ВЧЕРА',
+                    orders: [],
+                    cancels: [],
+                    sales: [],
+                    refunds: []
+                },
+                week: {
+                    title: 'ЗА 7 ДНЕЙ',
+                    orders: [],
+                    cancels: [],
+                    sales: [],
+                    refunds: []
+                },
+                month: {
+                    title: 'ЗА 30 ДНЕЙ',
+                    orders: [],
+                    cancels: [],
+                    sales: [],
+                    refunds: []
+                },
+            }
+
             try {
-                let today = new Date();
-                // today.setDate(today.getDate() - 1);
-                // end.setHours(23, 59, 59, 0);
                 const res: AxiosResponse<ISale[]> = await axios.get('https://statistics-api.wildberries.ru/api/v1/supplier/sales', {
                     headers: {
                         Authorization: user.statsToken
                     },
                     params: {
-                        dateFrom: today.toISOString(),
-                        flag: 1
+                        flag: 0,
+                        dateFrom: month,
                     }
                 });
                 const res2: AxiosResponse<IOrder[]> = await axios.get('https://statistics-api.wildberries.ru/api/v1/supplier/orders', {
@@ -372,24 +415,62 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                         'Authorization': user.statsToken
                     },
                     params: {
-                        flag: 1,
-                        dateFrom: (new Date()).toISOString()
+                        flag: 0,
+                        dateFrom: month,
                     }
                 });
-                let cancellations: IOrder[] = [];
 
-                let refunds: ISale[] = [];
-                res.data.forEach(el => {
-                    console.log(el.saleID);
-                    if (el.saleID.startsWith('R')) refunds.push(el);
+                res.data.forEach(sale => {
+                    // @ts-ignore
+                    const lastChangeDate: string = dayjs(sale.lastChangeDate).format('YYYY-MM-DD');
+                    // @ts-ignore
+                    const date: string = dayjs(sale.date).format('YYYY-MM-DD')
+
+                    if (date === today) periodData.today.sales.push(sale);
+                    if (lastChangeDate === today && sale.saleID.startsWith('R')) periodData.today.refunds.push(sale);
+
+                    if (date === yesterday) periodData.yesterday.sales.push(sale);
+                    if (lastChangeDate === yesterday && sale.saleID.startsWith('R')) periodData.yesterday.refunds.push(sale);
+
+                    if (date >= week) periodData.week.sales.push(sale);
+                    if (lastChangeDate >= week && sale.saleID.startsWith('R')) periodData.week.refunds.push(sale);
+
+                    if (date >= month) periodData.month.sales.push(sale);
+                    if (lastChangeDate >= month && sale.saleID.startsWith('R')) periodData.month.refunds.push(sale);
                 });
-                res2.data.forEach(el => {
-                    if (el.isCancel === true) cancellations.push(el);
+
+                res2.data.forEach(order => {
+                    // @ts-ignore
+                    const date: string = dayjs(order.date).format('YYYY-MM-DD');
+                    // @ts-ignore
+                    const cancelDate: string = dayjs(order.cancel_dt).format('YYYY-MM-DD');
+
+                    if (date === today) periodData.today.orders.push(order);
+                    if (order.isCancel && cancelDate === today) periodData.today.cancels.push(order)
+
+                    if (date === yesterday) periodData.yesterday.orders.push(order);
+                    if (order.isCancel && cancelDate === yesterday) periodData.yesterday.cancels.push(order);
+
+                    if (date >= week) periodData.week.orders.push(order);
+                    if (order.isCancel && cancelDate >= week) periodData.week.cancels.push(order);
+
+                    if (date >= month) periodData.month.orders.push(order);
+                    if (order.isCancel && cancelDate >= month) periodData.month.cancels.push(order);
                 });
-                await bot.sendMessage(q.from.id, `ОТЧЕТ ЗА СЕГОДНЯ\n(действительно на ${(new Date(res2.data[0].lastChangeDate)).toLocaleString('ru-RU')})\nОбновляется каждые 30 мин.\n🛒 Заказы: ${res2.data.length} на ${res2.data.reduce((prev, el) => prev + el.totalPrice * (1 - el.discountPercent/100), 0).toLocaleString('ru-RU', {maximumFractionDigits: 2})}₽\n❌ Из них отмененные: ${cancellations.length} на ${cancellations.reduce((prev, el) => prev + el.totalPrice, 0).toLocaleString('ru-RU', {maximumFractionDigits: 2})}₽\n💸 Продажи: ${res.data.filter(el => el.saleID.startsWith('S') || el.saleID.startsWith('D')).length || 0} на ${res.data.reduce((prev, el) => prev+ el.priceWithDisc, 0).toLocaleString('ru-RU', {maximumFractionDigits: 2}) || 0}₽\n↩️ Возвраты: ${refunds.length}
-                `);
+
+                let periodReports: string[] = [];
+
+                for (const period in periodData) {
+                    const prd = periodData[period];
+                    periodReports.push(`<b>${prd.title}</b>\n` + TEXT_REPORT(prd.sales, prd.orders, prd.cancels, prd.refunds));
+                }
+
+                await bot.sendMessage(q.from.id, `ОТЧЕТ ЗА 30 ДНЕЙ (действительно на ${now.format('DD.MM.YYYY HH:mm')} МСК)\n\n${periodReports.join('\n\n')}\n\n\nℹ️ Данные предоставлены только в информационных целях и могут отличаться от отчетов, доступных в личном кабинете WB.`, {
+                    parse_mode: 'HTML'
+                });
+
                 admins.forEach(async (admin) => {
-                    await bot.sendMessage(+admin.chatId, `Отчет получен пользователем ${q.from.username || q.from.first_name}, Промокод: ${user.special ? 'special23': 'ранняяпташка'}`);
+                    await bot.sendMessage(+admin.chatId, `Отчет получен пользователем ${q.from?.username || q.from?.first_name}, Промокод: ${user.special ? 'special23': 'ранняяпташка'}`);
                 });
             } catch (error) {
                 console.log(error);
@@ -487,29 +568,66 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
         if (!result) return await bot.sendMessage(msg.chat.id, 'Произошла ошибка');
         await bot.sendMessage(msg.chat.id, 'Пользователь добавлен как администратор, просмотреть пользователей: /users');
         // TODO: сделать через крон
-        // setTimeout(async () =>{
-        //     setInterval(async () => {
-        //         const [result, count] = await userRepo.findAndCount();
-        //         await bot.sendMessage(msg.chat.id, `Количество пользователей всего: ${count}\nС промокодом ранняяпташка: ${result.filter(e => e.enteredPromo && !e.special).length}\nС промокодом special23: ${result.filter(e => e.enteredPromo && e.special).length}\nБез промокода: ${result.filter(e => !e.enteredPromo).length}`);
-        //     }, 24*60*60*1000);
-        // }, (new Date()).getHours() >= 21 ? 0 : (21 - (new Date()).getHours()) * 60 * 60 * 1000);
+        setTimeout(async () =>{
+            setInterval(async () => {
+                const [result, count] = await userRepo.findAndCount();
+                await bot.sendMessage(msg.chat.id, `Количество пользователей всего: ${count}\nС промокодом ранняяпташка: ${result.filter(e => e.enteredPromo && !e.special).length}\nС промокодом special23: ${result.filter(e => e.enteredPromo && e.special).length}\nБез промокода: ${result.filter(e => !e.enteredPromo).length}`);
+            }, 24*60*60*1000);
+        }, (new Date()).getHours() >= 21 ? 0 : (21 - (new Date()).getHours()) * 60 * 60 * 1000);
     });
 
     bot.onText(/\/report/, async (msg: TGBot.Message) => {
-        const user = await userRepo.findOneBy({chatId: String(msg.chat.id)});
-        const admins = await adminRepo.find();
+        const user: User = await userRepo.findOneBy({chatId: String(msg.chat.id)});
+        const admins: Admin[] = await adminRepo.find();
         await bot.sendChatAction(msg.chat.id, 'typing');
         if (!user) return await bot.sendMessage(msg.chat.id, 'Вы не авторизованы');
         if (!user.enteredStats) return await bot.sendMessage(msg.chat.id, 'Вы не ввели токен статистики');
+
+        const now = dayjs(new Date()).tz('Europe/Moscow');
+        const today = now.format('YYYY-MM-DD');
+        const yesterday = now.subtract(1, 'day').format('YYYY-MM-DD');
+        const week = now.subtract(7, 'day').format('YYYY-MM-DD');
+        const month = now.subtract(30, 'day').format('YYYY-MM-DD');
+
+        const periodData: Record<string, { title: string, orders: IOrder[], cancels: IOrder[], sales: ISale[], refunds: ISale[] }> = {
+            today: {
+                title: 'СЕГОДНЯ',
+                orders: [],
+                cancels: [],
+                sales: [],
+                refunds: []
+            },
+            yesterday: {
+                title: 'ВЧЕРА',
+                orders: [],
+                cancels: [],
+                sales: [],
+                refunds: []
+            },
+            week: {
+                title: 'ЗА 7 ДНЕЙ',
+                orders: [],
+                cancels: [],
+                sales: [],
+                refunds: []
+            },
+            month: {
+                title: 'ЗА 30 ДНЕЙ',
+                orders: [],
+                cancels: [],
+                sales: [],
+                refunds: []
+            },
+        }
+
         try {
-            let today = new Date();
             const res: AxiosResponse<ISale[]> = await axios.get('https://statistics-api.wildberries.ru/api/v1/supplier/sales', {
                 headers: {
                     Authorization: user.statsToken
                 },
                 params: {
-                    dateFrom: today.toISOString(),
-                    flag: 1
+                    flag: 0,
+                    dateFrom: month,
                 }
             });
             const res2: AxiosResponse<IOrder[]> = await axios.get('https://statistics-api.wildberries.ru/api/v1/supplier/orders', {
@@ -517,25 +635,98 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
                     'Authorization': user.statsToken
                 },
                 params: {
-                    flag: 1,
-                    dateFrom: (new Date()).toISOString()
+                    flag: 0,
+                    dateFrom: month,
                 }
             });
-            let cancellations: IOrder[] = [];
 
-            let refunds: ISale[] = [];
-            res.data.forEach(el => {
-                console.log(el.saleID);
-                if (el.saleID.startsWith('R')) refunds.push(el);
+            res.data.forEach(sale => {
+                // @ts-ignore
+                const lastChangeDate: string = dayjs(sale.lastChangeDate).format('YYYY-MM-DD');
+                // @ts-ignore
+                const date: string = dayjs(sale.date).format('YYYY-MM-DD')
+
+                if (date === today) periodData.today.sales.push(sale);
+                if (lastChangeDate === today && sale.saleID.startsWith('R')) periodData.today.refunds.push(sale);
+
+                if (date === yesterday) periodData.yesterday.sales.push(sale);
+                if (lastChangeDate === yesterday && sale.saleID.startsWith('R')) periodData.yesterday.refunds.push(sale);
+
+                if (date >= week) periodData.week.sales.push(sale);
+                if (lastChangeDate >= week && sale.saleID.startsWith('R')) periodData.week.refunds.push(sale);
+
+                if (date >= month) periodData.month.sales.push(sale);
+                if (lastChangeDate >= month && sale.saleID.startsWith('R')) periodData.month.refunds.push(sale);
             });
-            res2.data.forEach(el => {
-                if (el.isCancel === true) cancellations.push(el);
+
+            res2.data.forEach(order => {
+                // @ts-ignore
+                const date: string = dayjs(order.date).format('YYYY-MM-DD');
+                // @ts-ignore
+                const cancelDate: string = dayjs(order.cancel_dt).format('YYYY-MM-DD');
+
+                if (date === today) periodData.today.orders.push(order);
+                if (order.isCancel && cancelDate === today) periodData.today.cancels.push(order)
+
+                if (date === yesterday) periodData.yesterday.orders.push(order);
+                if (order.isCancel && cancelDate === yesterday) periodData.yesterday.cancels.push(order);
+
+                if (date >= week) periodData.week.orders.push(order);
+                if (order.isCancel && cancelDate >= week) periodData.week.cancels.push(order);
+
+                if (date >= month) periodData.month.orders.push(order);
+                if (order.isCancel && cancelDate >= month) periodData.month.cancels.push(order);
             });
-            await bot.sendMessage(msg.chat.id, `ОТЧЕТ ЗА СЕГОДНЯ\n(действительно на ${(new Date(res2.data[0].lastChangeDate)).toLocaleString('ru-RU')})\nОбновляется каждые 30 мин.\n🛒 Заказы: ${res2.data.length} на ${res2.data.reduce((prev, el) => prev + el.totalPrice * (1 - el.discountPercent/100), 0).toLocaleString('ru-RU', {maximumFractionDigits: 2})}₽\n❌ Из них отмененные: ${cancellations.length} на ${cancellations.reduce((prev, el) => prev + el.totalPrice, 0).toLocaleString('ru-RU', {maximumFractionDigits: 2})}₽\n💸 Продажи: ${res.data.filter(el => el.saleID.startsWith('S') || el.saleID.startsWith('D')).length || 0} на ${res.data.reduce((prev, el) => prev+ el.priceWithDisc, 0).toLocaleString('ru-RU', {maximumFractionDigits: 2}) || 0}₽\n↩️ Возвраты: ${refunds.length}
-            `);
+
+            let periodReports: string[] = [];
+
+            for (const period in periodData) {
+                const prd = periodData[period];
+                periodReports.push(`<b>${prd.title}</b>\n` + TEXT_REPORT(prd.sales, prd.orders, prd.cancels, prd.refunds));
+            }
+
+            await bot.sendMessage(msg.from.id, `ОТЧЕТ ЗА 30 ДНЕЙ (действительно на ${now.format('DD.MM.YYYY HH:mm')} МСК)\n\n${periodReports.join('\n\n')}\n\n\nℹ️ Данные предоставлены только в информационных целях и могут отличаться от отчетов, доступных в личном кабинете WB.`, {
+                parse_mode: 'HTML'
+            });
+
             admins.forEach(async (admin) => {
                 await bot.sendMessage(+admin.chatId, `Отчет получен пользователем ${msg.from?.username || msg.from?.first_name}, Промокод: ${user.special ? 'special23': 'ранняяпташка'}`);
             });
+        // try {
+        //     const res: AxiosResponse<ISale[]> = await axios.get('https://statistics-api.wildberries.ru/api/v1/supplier/sales', {
+        //         headers: {
+        //             Authorization: user.statsToken
+        //         },
+        //         params: {
+        //             dateFrom: today,
+        //             flag: 1
+        //         }
+        //     });
+        //     const res2: AxiosResponse<IOrder[]> = await axios.get('https://statistics-api.wildberries.ru/api/v1/supplier/orders', {
+        //         headers: {
+        //             Authorization: user.statsToken
+        //         },
+        //         params: {
+        //             flag: 1,
+        //             dateFrom: today
+        //         }
+        //     });
+        //     let cancellations: IOrder[] = [];
+        //
+        //     let refunds: ISale[] = [];
+        //     res.data.forEach(el => {
+        //         if (el.saleID.startsWith('R')) refunds.push(el);
+        //     });
+        //     res2.data.forEach(el => {
+        //         // @ts-ignore
+        //         if (el.isCancel) cancellations.push(el);
+        //     });
+        //
+        //     await bot.sendMessage(msg.from.id, `ОТЧЕТ ЗА СЕГОДНЯ (действительно на ${now.format('DD.MM.YYYY HH:mm')} МСК)\n\n` + TEXT_REPORT(res.data, res2.data, cancellations, refunds));
+        //
+        //     admins.forEach(async (admin) => {
+        //         await bot.sendMessage(+admin.chatId, `Отчет получен пользователем ${msg.from?.username || msg.from?.first_name}, Промокод: ${user.special ? 'special23': 'ранняяпташка'}`);
+        //     });
         } catch (error) {
             console.log(error);
             await bot.sendMessage(msg.chat.id, 'Произошла ошибка. Попробуйте через минуту.');
@@ -547,4 +738,21 @@ bot.onText(/(.)+/, async (msg: TGBot.Message) => {
         if (!user) return await bot.sendMessage(msg.from?.id || 0, 'Вы не авторизованы');
         await Bot.newHome(msg, bot, user);
     });
+
+    const sendUsersReportTask = cron.schedule("0 20 * * *", async (): Promise<void> => {
+        try {
+            const [result, count] = await userRepo.findAndCount();
+
+            await bot.sendMessage(-1001627849243, `Количество пользователей всего: ${count}\nС промокодом ранняяпташка: ${result.filter(e => e.enteredPromo && !e.special).length}\nС промокодом special23: ${result.filter(e => e.enteredPromo && e.special).length}\nБез промокода: ${result.filter(e => !e.enteredPromo).length}\nЗарегистрировались сегодня: ${result.filter(e => e.signupDate.getDay() === (new Date()).getDay() && e.signupDate.getMonth() === (new Date()).getMonth() && e.signupDate.getFullYear() === (new Date()).getFullYear()).length}`);
+
+        } catch (error) {
+            console.log(error);
+        }
+    }, {
+        scheduled: true,
+        timezone: "Europe/Moscow"
+    });
+    await sendUsersReportTask.start();
+
+
 }).catch(error => console.log(error))

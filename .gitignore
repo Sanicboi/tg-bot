@@ -6,4 +6,5 @@ tmp/
 temp/
 .env
 test.rest
+src/tests.ts
 
